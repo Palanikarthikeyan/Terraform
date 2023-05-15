@@ -1,0 +1,703 @@
+ Introduction to IaC
+ |
+ Types of IaC Tools
+ |
+ Why Terraform
+ |
+ Install Terraform
+ |
+ HashiCorp Configuration Language(HCL)
+ |
+ Resource - LocalFiles,GitHub,Cloud(OCI) //
+ |
+ |->Update & Destroy
+ |
+ Terraform providers
+ |
+ configuration directory
+ |
+ Variables
+ |
+ Resource - Attributes
+ 	  - Dependencies
+ 	  - 
+ Terraform state file
+ |
+ Terraform commands
+ |
+ Life Cycle Rules
+ |
+ Datasource 
+ |
+ Metaarguments
+ |
+ Version Constraints
+ |
+ RemoteState
+ |
+ import & modules
+ |
+ TF Functions and conditional expression
+ |
+ Configuration Tool - ansible - playbook
+----------------------------------------------------------------------------------
+ Why Terraform ?
+
+ 1. Easy to Learn (HCL)
+ 2. Very huge community support
+ 3. Open Source 
+ 4. multi-Cloud 
+-------------------------------------------------------
+
+ mkdir <terraform>
+ |
+ cd <terraform>
+ |
+ file: main.tf
+ 
+
+ example:
+ ---------
+ resource oci {
+	..
+	..
+	..
+ }
+ 
+ Multiple types of code blocks
+ ------------------------------
+ 1. provider
+ 2. Resource
+ 3. Data source
+ 4. terraform
+ 5. variable
+ 6. input
+ 7. output
+ ..
+
+ blocktype <blockName> <logicalname>{
+	Attributes
+	Key=Value
+ }	
+
+ Terraform docs - Block details + attribute details 
+ 
+ --------------------------------------
+ OL[5678]
+ |
+ wget https://releases.hashicorp.com/terraform/1.4.6/terraform_1.4.6_linux_arm.zip
+
+ unzip terraform_1.4.6_linux_arm.zip
+ 
+ ls 
+ terraform 
+ 
+ mv terraform /usr/local/bin 
+ 
+ terraform {Enter}
+
+	(or)
+ terraform --version {Enter}
+ 
+-----------------------------------------------------------------
+ mkdir TF
+ cd TF
+ mkdir Day1
+ cd Day1
+ 
+ Resource: local_file
+ Syntax:-
+ ---------
+ resource "local_file" <logicalname>{
+	key=value <== arguments
+ }
+ 
+ 
+ vi main.tf
+ resource "local_file" "myfile" {
+	 filename = "/tmp/r1.log"
+	 content = "Sample test message from TF resource"
+ }
+ :wq
+ terraform init 
+ terraform plan 
+ |
+ terraform apply 
+  yes
+ ...
+ --------------------------------------------------------------
+ variable - namespace - holding a value
+
+ Syntax:-
+ ---------
+ variable "<variablename>" {
+	Key = value
+ }
+
+ example:-
+ ---------
+ variable "fname" {
+	default = "/tmp/result.log"
+ }	-------    ---------------
+ 	
+ resource "local_file" "myfile" {
+	filename = var.fname  # var - keyword  var.<variablename> 
+	content  = "This is test message"
+}			
+ 
+------------------------------------------------------------------
+  
+ [root@krosumlabs case5]# cat -n main.tf
+     1  resource "local_file" "myfile" {
+     2          filename = var.fname
+     3          content  = var.content
+     4          file_permission = "0660"
+     5  }
+     6
+     7  resource "random_pet" "my-pet" {
+     8          prefix = var.prefix
+     9          length = var.length
+    10  }
+[root@krosumlabs case5]# cat -n variables.tf
+     1  variable "fname" {}
+     2  variable "content"{
+     3          default = "this is my test message"
+     4  }
+     5  variable "prefix" {}
+     6  variable "length" {
+     7          default = 2
+     8  }
+----------------------------------------------------------------------
+ Recap
+ ------
+ resource "local_file" <resource_name>{
+	Key = Value
+ }
+ 
+ # value - dynamically
+		|
+		variable block
+		|
+		variable <variablename>{
+			Key = Value
+		}
+
+ # var.<variablename> <== replace variable - value
+ |
+ # variable block
+   variable <variablename>{} - Dynamic input (or) interactive input
+ 
+ # terraform apply {Enter}
+ Enter a filename:
+ ----------------------------------------------------------------
+ Runtime input (or) non-interactive input (or) commandline argument input
+ -var "variablename = value"
+
+ terraform apply -var "fname=/tmp/r1.log" -var "myip=10.20.30.40" {Enter}
+		 ------------------------------------------------
+				Runtime input
+ -------------------------------------------------------------------------
+
+ resource "local_file" "myresource" {
+
+		filename = "/tmp/result.log"
+ 		content  = "test message"
+ }
+ |
+ ----------------------------------------------------//main.tf
+ |
+ file: variables.tf
+ 
+ variable myfile{
+	default="Welcome message"
+ }
+ ----------------------------------------------------//variables.tf
+ resource "local_file" "myresource" {
+
+		filename = "/tmp/result.log"
+ 		content  = var.myfile
+ }
+ -----------------------------------------------------//main.tf
+ 
+ file: variables.tf
+ 
+ variable myfile{}
+ ------------------------------------------------//variables.tf
+ resource "local_file" "myresource" {
+
+		filename = "/tmp/result.log"
+  		content  = var.myfile
+ } 
+ ----------------------------------------------//main.tf
+ terraform apply {Enter} - Interactive input
+  <== user input
+	(or)
+ terraform apply -var "myfile=Welcome message from cmdline args" {Enter}
+
+ -------------------------------------------------------------------------
+
+ Environment variables
+ ---------------------
+  |->Terraform env variable name starts with TF_VAR_<userdefinedname>
+
+ ex: TF_VAR_filename
+     TF_VAR_content
+ 
+ 
+ resource "local_file" "myresource" {
+
+		filename = "/tmp/result.log"
+  		content  = var.myfile
+ } 
+ ----------------------------------------------//main.tf
+ root@host~]# export TF_VAR_myfile="default message from env" {Enter}
+ root@host~]# terraform apply{enter}
+ 
+ --------------------------------------------------------------------------
+ Variable Definition Files
+ -------------------------
+ 
+file: filename.tfvars (or) filename.auto.tfvars (or) filename.auto.tfvars.json
+ 
+variable.auto.tfvars 
+|
+filename = "/root/mylog.txt"
+
+
+variable.tf
+------------
+variable filename {
+	type = string
+}
+ 
+main.tf
+--------
+resource local_file "myfile"{
+	filename = var.filename
+}
+ 
+--------------------------------------------------------
+ commandline args(-var {commandline-flag})
+	|
+      auto.tfvar
+	|
+	.tfvars
+	|
+	env
+	|
+	local variable 
+ 
+-------------------------------------------------------------
+file: variables.tf
+-----
+  variables fname{
+	default = /tmp/test.123
+  }
+ -------------------------
+  export TF_VAR_fname="/tmp/test.abc"
+  
+ terraform apply{enter} ->/tmp/test.abc  
+ unset TF_VAR_fname     # delete a env variable 
+ terraform apply{enter} ->/tmp/test.123
+----------------------------------------------------------------
+
+ file: variable.tf
+
+ variable "filename"{
+	default = "/root/pets.txt"
+	type = string
+ }
+ 
+ string - "A-Za-z0-9' ' specialchars"
+ |
+ bool	- true/false 
+ |
+ number - anydigits
+ |
+ any	- default value
+ |
+ list - collection of values(or) collection of items - ordered
+	[]
+	["d1","d2","d3","d4"]
+	  0    1    2    3 
+ map  - collection of values-key/value - pair - unordered
+			     ----------
+	f1 = "test.java"  interface="eth0"
+	f2 = "test.conf"
+	
+
+ list ->["/etc/f1.conf","/etc/f2.conf"]
+
+ Vs
+ map -> f1 = /etc/f1.conf
+	f2 = /etc/f2.conf 
+ 
+ object -> complex data structure
+ |
+ tuple  -> complex data structure
+
+ ----------------------------------------------------------------
+ variables.tf				main.tf
+ --------------				---------
+ variable "prefix" {		  resource "random_pet" "my-pet"{
+  default = "Mr"  	=>		prefix=var.prefix
+ }				  }
+     Vs	
+
+ variable "prefix" {			   resource "random_pet" "my-pet"{
+  default = ["Mr","Mrs","Dr","prof","sir"]	prefix=var.prefix[0]
+  type = list				   }
+ }
+
+ ["Mr","Mrs","Dr","prof","sir"]
+   0     1    2     3     4 <== index
+ 
+
+     Vs
+
+ variable "prefix" {			   resource "random_pet" "my-pet"{
+  default = {  					
+	  "K1" = "Mr"				prefix=var.prefix["K1"] 
+	  "K2" = "Mrs"				 
+	  "K3" = "Dr"  			  }
+  }
+
+  type = map			   
+ }
+
+------------------------
+ [] - list - ordered 
+ 
+ {} - map - unordered
+-------------------------------------------------------------
+ To access resource attribue
+ -----------------------------
+ ${resourceType.resourcename.attribute}
+
+ random_pet.my-pet: Creation complete after 0s [id=Mr-assured-quagga]
+
+ ${random_pet.my-pet.id}
+ --------------------------//value
+ 
+ output of random_pet resource is input to the local_file resource
+
+ [pet] -->[file]
+
+  (1) ---->(2)
+ 
+ 
+[root@krosumlabs case8]# cat -n main.tf
+     1
+     2  resource "local_file" "pet"{
+     3          filename = var.filename
+     4          content = "my pet name is Mr.cat"
+     5  }
+     6  resource "random_pet" "my-pet"{
+     7          prefix = var.mypet
+     8  }
+
+
+[root@krosumlabs case8]# cat -n main.tf
+     1
+     2  resource "local_file" "pet"{
+     3          filename = var.filename
+     4          content = "my pet name is ${random_pet.my-pet.id}"
+     5  }
+     6  resource "random_pet" "my-pet"{
+     7          prefix = var.mypet
+     8  }
+ -----------------------------------------------//Implicit Dependency
+
+			Vs
+
+[root@krosumlabs case8]# cat -n main.tf
+     
+       resource "local_file" "pet"{
+               filename = var.filename
+               content = "my pet name is ${random_pet.my-pet.id}"
+		depends_on = [
+			random_pet.my-pet
+		]  
+       }	----------------------------------//Explicit Dependency
+       resource "random_pet" "my-pet"{
+               prefix = var.mypet
+       }
+ -------------------------------------------------------------------------
+
+ provider{}
+ resource{}
+ |
+ variable{}
+ |
+ output{} ->display to monitor
+ --------
+
+ Syntax:-
+ ---------
+ output "<variablename>" {
+	Key = Value
+ }
+ 
+ 
+[root@krosumlabs case8]# cat -n main.tf
+     1
+     2  resource "local_file" "pet"{
+     3          filename = var.filename
+     4          content = "my pet name is ${random_pet.my-pet.id}"
+     5  }
+     6  resource "random_pet" "my-pet"{
+     7          prefix = var.mypet
+     8  }
+	
+	output "pet-name" {
+		value = random-pet.my-pet.id
+		description = "............"
+        }
+
+	|
+	terraform apply
+	|
+	terraform output # value of o/p variable
+	|
+	terraform output <resourcename> # provisioning details
+
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ jija2 template
+ 
+ variable
+
+ "user defined message:${variable}"
+  
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ 
+[root@krosumlabs LocalFile]# cat case5/variables.tf
+variable "fname" {}
+variable "content"{
+        default = "this is my test message"
+}
+variable "prefix" {}
+variable "length" {
+        default = 2
+}
+[root@krosumlabs LocalFile]# cat case5/main.tf
+resource "local_file" "myfile" {
+        filename = var.fname
+        content  = var.content
+        file_permission = "0660"
+}
+
+resource "random_pet" "my-pet" {
+        prefix = var.prefix
+        length = var.length
+}
+[root@krosumlabs LocalFile]#
+-----------------------------------------------------------------------
+ Life Cycle Rules:-
+ ------------------
+ How to setup Life Cycle rules in TF?
+ 
+ resource "local_file" "fname"{
+	...
+	file_permission = "0777"
+ }
+ apply ->1st delete existing resource
+ then create new with updated permission.
+ ---------------------------------------//default TF Cycle
+
+ 
+ 
+
+ create new resource then delete old resource
+ ---------------------------------------------
+ lifecycle { 
+	create_before_destory = true
+ }
+
+ 
+ resource "local_file" "fname"{
+	...
+	file_permission = "0777"
+	lifecycle{
+		create_before_destory = true
+	}
+ }		
+ 
+ //don't destroy resource 
+ 
+ resource "local_file" "fname"{
+	...
+	file_permission = "0777"
+	lifecycle{
+		prevent_destroy = true
+	}
+ }		
+--------------------------------------------------------------------------------
+ Data Sources
+ -------------
+ |->External Source (DB,File etc.,)
+    ---------------
+	|->This is not created/managed by TF.
+	|
+	|->But TF can read/get information about dataresource.
+	|
+	
+ 	|-> data block
+
+	Syntax:-
+	---------
+	data "<resourcename>" "LogicalName" {
+		attributes
+	}
+	
+	resource "local_file" "fname" {
+		filename = "/tmp/p1.log"
+		content = data.local_file.demo.content
+	}
+	data "local_file" "demo"{
+		filename = "/etc/f1.conf" <== 	
+	}
+ 
+    
+-----------------------------------------------------------------------
+ 				
+		
+ [main.tf]  [tfstatefile] 			[cloud]
+	.........................................//
+				|
+				API-Call //json
+				---
+			
+   <provider>(Ex: cloud,github,database ..) 
+
+  provider file ->provider.tf
+		  -------- ==
+		  |
+		  provider "providerName"{
+			credientials
+			api-token
+		  }
+
+  terraform  -> terraform {
+				version ...
+		}
+
+  resource  -> resource (service details)
+
+  
+  main.tf  variables.tf  provider.tf 
+  -------
+ ------------------------------------------------------------------------------
+ file: provider.tf
+ -----
+ terraform {
+  required_providers {
+    github = {
+      source = "integrations/github"
+      version = "5.25.0"
+    }
+  }
+ }
+
+ provider "github" {
+	token = ""
+ }
+ --------
+ file: main.tf
+ -----
+ resource "github_repository" "example" {
+  name        = "example"
+  description = "My awesome codebase"
+
+  visibility = "public" 
+
+ -
+=================================================================
+[root@krosumlabs GitHub]# cat providers.tf
+terraform {
+  required_providers {
+    github = {
+      source  = "integrations/github"
+      version = "5.25.0"
+    }
+  }
+}
+
+provider "github" {
+  token = "ghp_ZWLDN3du75575hffhf4iLh6RI615S1ly1TMUcB"
+}
+[root@krosumlabs GitHub]# cat main.tf
+resource "github_repository" "example" {
+  name        = "example"
+  description = "My awesome codebase"
+
+  visibility = "public"
+}
+[root@krosumlabs GitHub]#
+
+ 
+
+==========================================================================
+
+github.com ->login ->settings ->Developer settings ->PAT ->Token 
+							    |
+							->GeneratenewToken.
+----------------------------------------------------------------------------
+  
+ Infra - state - based action
+ -----
+ |->local file
+ |->repo
+ |->service
+ |->X
+ |->Y
+ |->Z
+   ------------//provider plugin 
+
+ |->resource
+	|
+  ---------------
+ |		|
+ resource	datasource (external TF)
+ 
+ provider: github
+ |	   -------
+ resource: repository
+	   ----------
+		|-------------APICall--------[GitHub]
+			........|.........
+				|
+				json
+
+
+ TF Plugin 		API
+ providers   ----------------------> [Cloud]
+					|
+		------<-----------------
+			who are you?
+		------------->---------------	
+			Its TF - Here are my key  //
+						    |
+		---------<-----------------------
+			OK - what you want?
+		----------->---------------------
+			create these resource	
+		--------------<----------------
+			OK,Let me Check with IAM  	
+		-------------<--------------------- --
+			Authorized create resource
+		//then state file(TF state - blue print of Infra)
+		  will generate
+						  
+
+ -----------------------------------------------------------------
+ ls -a
+  . .. main.tf
+ 
+ terraform init {enter}
+	   ----
+ ls -a
+ . .. .terraform
+      ----------
+----------------------------------------------------------------------------------------------------------   
+
+			
